@@ -91,16 +91,42 @@ export default function({ types: t }) {
     }
 
     function buildMethodRef(protoRef, methodName) {
-        return t.memberExpression(
-            t.logicalExpression(
-                '||',
-                t.memberExpression(protoRef, t.identifier('prototype')),
-                protoRef
-            ),
-            t.identifier(methodName)
+        const calleeExpression = t.memberExpression(
+            t.identifier('arguments'),
+            t.identifier('callee')
         );
-    }
+        const superclassExpression = t.memberExpression(
+            t.identifier('$owner'),
+            t.identifier('superclass')
+        );
+        /** arguments.callee.$previous */
+        const builtPrevious = t.memberExpression(
+            calleeExpression,
+            t.identifier('$previous')
+        )
+        const calleeName = t.memberExpression(
+            calleeExpression,
+            t.identifier('$name')
+        )
+        const builtSuperclass = t.memberExpression(
+            t.memberExpression(
+                calleeExpression,
+                t.identifier('$owner')
+            ),
+            t.identifier('superclass'),
+        );
+        const builtSuperclassCaller = t.logicalExpression('&&', t.memberExpression(
+            calleeExpression,
+            t.identifier('$owner')
+        ), t.memberExpression(
+            builtSuperclass,
+            calleeName,
+            true,
+        ));
 
+        return t.logicalExpression('||', t.logicalExpression('||', builtPrevious, builtSuperclassCaller), t.memberExpression(t.logicalExpression('||', t.memberExpression(protoRef, t.identifier('prototype')), protoRef), t.identifier(methodName)));
+    }
+    
     function buildReplacement(methodRef, args) {
         const memberExpression = t.memberExpression(methodRef, t.identifier(args.length ? 'apply' : 'call'));
         return args.length ? t.callExpression(memberExpression, [t.thisExpression(), args[0]]) :
