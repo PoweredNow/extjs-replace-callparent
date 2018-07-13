@@ -166,7 +166,8 @@ export default function ({ types: t }) {
                 }
                 const unsupportedMethods = ['apply', 'get', 'set', 'update', 'constructor'];
                 const isMethodUnsupported = unsupportedMethods.some(method => clsMethod.node.key.name.indexOf(method) === 0);
-                if (clsMethod && clsMethod.node.value.async && isMethodUnsupported) {
+                const isAsyncFunction = clsMethod && clsMethod.node.value.async;
+                if (isAsyncFunction && isMethodUnsupported) {
                     throw path.buildCodeFrameError("callParent is not supported in async fuctions of the following types: " + unsupportedMethods.join(', '));
                 }
                 const methodName = clsMethod.node.key.name;
@@ -180,7 +181,7 @@ export default function ({ types: t }) {
                 }
 
                 const args = path.node.arguments;
-                if (!isMethodUnsupported) {
+                if (isAsyncFunction && !isMethodUnsupported) {
                     path.replaceWith(buildReplacement(methodRef, args));
                 }
             }
