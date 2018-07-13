@@ -1,14 +1,13 @@
-
-export default function({ types: t }) {
+export default function ({ types: t }) {
 
     function isThisOrMeExpression(node) {
-        return t.isThisExpression(node) || t.isIdentifier(node, {name: 'me'});
+        return t.isThisExpression(node) || t.isIdentifier(node, { name: 'me' });
     }
 
     function isCallParentCallee(node) {
         return t.isMemberExpression(node) &&
             isThisOrMeExpression(node.object) &&
-            t.isIdentifier(node.property, {name: 'callParent'});
+            t.isIdentifier(node.property, { name: 'callParent' });
     }
 
     function isExtDefineCall(extNames) {
@@ -20,7 +19,7 @@ export default function({ types: t }) {
             let callee = path.node.callee;
             return t.isMemberExpression(callee) &&
                 t.isIdentifier(callee.object) && extNames.includes(callee.object.name) &&
-                t.isIdentifier(callee.property, {name: 'define'});
+                t.isIdentifier(callee.property, { name: 'define' });
         };
     }
 
@@ -126,7 +125,17 @@ export default function({ types: t }) {
 
         return t.logicalExpression('||', t.logicalExpression('||', builtPrevious, builtSuperclassCaller), t.memberExpression(t.logicalExpression('||', t.memberExpression(protoRef, t.identifier('prototype')), protoRef), t.identifier(methodName)));
     }
-    
+
+    function buildOverridenMethodRef(protoRef, methodName) {
+        return t.memberExpression(
+            t.memberExpression(t.logicalExpression(
+                '||',
+                t.memberExpression(protoRef, t.identifier('prototype')),
+                protoRef
+            ), t.identifier(methodName)),
+            t.identifier('$previous'));
+    }
+
     function buildReplacement(methodRef, args) {
         const memberExpression = t.memberExpression(methodRef, t.identifier(args.length ? 'apply' : 'call'));
         return args.length ? t.callExpression(memberExpression, [t.thisExpression(), args[0]]) :
@@ -155,18 +164,25 @@ export default function({ types: t }) {
                 if (!clsMethod) {
                     throw path.buildCodeFrameError("Unable to find method declaration for this 'callParent'");
                 }
+                const unsupportedMethods = ['apply', 'get', 'set', 'update', 'constructor'];
+                const isMethodUnsupported = unsupportedMethods.some(method => clsMethod.node.key.name.indexOf(method) === 0);
+                if (clsMethod && clsMethod.node.value.async && isMethodUnsupported) {
+                    throw path.buildCodeFrameError("callParent is not supported in async fuctions of the following types: " + unsupportedMethods.join(', '));
+                }
                 const methodName = clsMethod.node.key.name;
 
-                const protoProp  = getProtoProp(defineCall);
+                const protoProp = getProtoProp(defineCall);
                 const isOverride = protoProp && protoProp.key.name === 'override';
-                const protoRef   = getProtoRef(protoProp);
+                const protoRef = getProtoRef(protoProp);
                 let methodRef = buildMethodRef(protoRef, methodName);
                 if (isOverride) {
-                    methodRef = getOverrideMethodRef(methodRef, defineCall);
+                    methodRef = buildOverridenMethodRef(protoRef, methodName);
                 }
 
                 const args = path.node.arguments;
-                path.replaceWith(buildReplacement(methodRef, args));
+                if (!isMethodUnsupported) {
+                    path.replaceWith(buildReplacement(methodRef, args));
+                }
             }
         }
     };
