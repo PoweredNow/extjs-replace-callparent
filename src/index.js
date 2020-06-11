@@ -157,7 +157,8 @@ export default function ({ types: t }) {
                 }
                 const defineCall = path.findParent(isExtDefineCall(state.opts.extNames));
                 if (!defineCall) {
-                    throw path.buildCodeFrameError("Unable to find 'Ext.define' for this 'callParent'");
+                    console.warn("Unable to find 'Ext.define' for this 'callParent'");
+                    return;
                 }
 
                 const clsMethod = path.findParent(isClassMethod);
