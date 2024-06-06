@@ -79,8 +79,7 @@ export default function ({ types: t }) {
     }
 
     function isClassMethod(path) {
-        return path.isObjectProperty() &&
-            t.isFunction(path.node.value);
+        return path.isObjectMethod() || path.isObjectProperty() && t.isFunction(path.node.value);
     }
 
     function buildMemberExpression(stringRef) {
@@ -167,7 +166,7 @@ export default function ({ types: t }) {
                 }
                 const unsupportedMethods = ['apply', 'get', 'set', 'update', 'constructor'];
                 const isMethodUnsupported = unsupportedMethods.some(method => clsMethod.node.key.name.indexOf(method) === 0);
-                const isAsyncFunction = clsMethod && clsMethod.node.value.async;
+                const isAsyncFunction = clsMethod && clsMethod.node.async;
                 if (isAsyncFunction && isMethodUnsupported) {
                     throw path.buildCodeFrameError("callParent is not supported in async fuctions of the following types: " + unsupportedMethods.join(', '));
                 }
