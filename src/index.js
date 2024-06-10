@@ -1,4 +1,7 @@
+import TransformParametersPlugin from 'babel-plugin-transform-es2015-parameters';
+
 export default function ({ types: t }) {
+    const transformParametersPlugin = TransformParametersPlugin({ types: t});
 
     function isThisOrMeExpression(node) {
         return t.isThisExpression(node) || t.isIdentifier(node, { name: 'me' });
@@ -182,6 +185,7 @@ export default function ({ types: t }) {
 
                 const args = path.node.arguments;
                 if (isAsyncFunction && !isMethodUnsupported) {
+                    transformParametersPlugin.visitor.Function.call(this, clsMethod);
                     path.replaceWith(buildReplacement(methodRef, args));
                 }
             }
